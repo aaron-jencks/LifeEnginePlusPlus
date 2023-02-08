@@ -8,7 +8,7 @@ const FossilRecord = require("../Stats/FossilRecord");
 const SerializeHelper = require("../Utils/SerializeHelper");
 
 class Organism {
-    constructor(col, row, env, parent=null) {
+    constructor(col, row, env, parenta=null, parentb=null) {
         this.c = col;
         this.r = row;
         this.env = env;
@@ -25,9 +25,55 @@ class Organism {
         this.mutability = 5;
         this.damage = 0;
         this.brain = new Brain(this);
-        if (parent != null) {
-            this.inherit(parent);
+        this.mutated = false;
+        if (parenta != null && parentb == null) {
+            // asexual reproduction
+            this.inherit(parenta);
+        } else if (parentb != null) {
+            // sexual reproduction
+            this.mutated = this.crossover(parenta, parentb)
         }
+    }
+
+    crossover(parenta, parentb) {
+        this.move_range = Math.random() > 0.5 ? parenta.move_range : parentb.move_range;
+        this.mutability = Math.random() > 0.5 ? parenta.mutability : parentb.mutability;
+
+        let pac = parenta.anatomy.cells.length;
+        let pbc = parentb.anatomy.cells.length;
+        const agb = pac > pbc;
+        const aeb = pac == pbc;
+
+        if (aeb || !agb) {
+            pac = Math.floor(Math.random() * pac) + 1
+            pbc -= pac
+        } else if (agb) {
+            pbc = Math.floor(Math.random() * pbc) + 1
+            pac -= pbc
+        }
+        
+        const pa_cells = this.getRandomCells(pac, [])
+        const pb_cells = this.getRandomCells(pbc, pa_cells)
+        const combined_new_cells = pa_cells.concat(pb_cells)
+
+        for (var c of combined_new_cells) {
+            this.anatomy.addInheritCell(c)
+        }
+
+        this.anatomy.checkTypeChange()
+
+        // Always copy brain in case of recessed genes
+        if (parenta.brain != null) {
+            if (parentb.brain != null) {
+                this.brain.copy(Math.random() > 0.5 ? parenta.brain : parentb.brain)
+            } else {
+                this.brain.copy(parenta.brain)
+            }
+        } else if (parentb.brain != null) {
+            this.brain.copy(parentb.brain)
+        }
+
+        return true
     }
 
     inherit(parent) {
@@ -56,10 +102,10 @@ class Organism {
         return this.anatomy.cells.length;
     }
 
-    reproduce() {
+    reproduce(partner) {
         //produce mutated child
         //check nearby locations (is there room and a direct path)
-        var org = new Organism(0, 0, this.env, this);
+        var org = new Organism(0, 0, this.env, this, partner);
         if(Hyperparams.rotationEnabled){
             org.rotation = Directions.getRandomDirection();
         }
@@ -76,8 +122,8 @@ class Organism {
                 if (org.mutability < 1)
                     org.mutability = 1;
             }
-        } 
-        var mutated = false;
+        }
+
         if (Math.random() * 100 <= prob) {
             if (org.anatomy.is_mover && Math.random() * 100 <= 10) { 
                 if (org.anatomy.has_eyes) {
@@ -87,10 +133,9 @@ class Organism {
                 if (org.move_range <= 0){
                     org.move_range = 1;
                 };
-                
             }
             else {
-                mutated = org.mutate();
+                this.mutated ||= org.mutate();
             }
         }
 
@@ -107,7 +152,7 @@ class Organism {
             org.r = new_r;
             this.env.addOrganism(org);
             org.updateGrid();
-            if (mutated) {
+            if (this.mutated) {
                 FossilRecord.addSpecies(org, this.species);
             }
             else {
@@ -149,6 +194,34 @@ class Organism {
 
     calcRandomChance(prob) {
         return (Math.random() * 100) < prob;
+    }
+
+    getRandomCells(count, excludeCoords) {
+        var result = []
+        var remainingCells = [...this.anatomy.cells]
+        for (var i = 0; i < count; i++) {
+            while (true) {
+                const choiceIndex = Math.floor(Math.random() * remainingCells.length)
+                const choice = remainingCells[choiceIndex]
+                var found = false;
+                for (var j in excludeCoords) {
+                    const ec = excludeCoords[j]
+                    if (choice.loc_row == ec.loc_row && choice.loc_col == excludeCoords.loc_col) {
+                        found = true
+                        break;
+                    }
+                }
+                if (found) {
+                    continue
+                }
+                result = result.concat(choice)
+                remainingCells.splice(choiceIndex, 1)
+                break;
+            }
+            if (remainingCells.length == 0)
+                break;
+        }
+        return result
     }
 
     attemptMove() {
@@ -273,14 +346,20 @@ class Organism {
         }
     }
 
+    canBreed() {
+        return this.food_collected >= this.foodNeeded()
+    }
+
     update() {
         this.lifetime++;
         if (this.lifetime > this.lifespan()) {
             this.die();
             return this.living;
         }
-        if (this.food_collected >= this.foodNeeded()) {
-            this.reproduce();
+        if (this.canBreed()) {
+            var partner = this.env.selectOrganismNearCoord(this.r, this.c, 
+                this.anatomy.getRadius() + Hyperparams.matingRadius)
+            this.reproduce(partner);
         }
         for (var cell of this.anatomy.cells) {
             cell.performFunction();
