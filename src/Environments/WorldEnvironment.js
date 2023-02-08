@@ -69,7 +69,7 @@ class WorldEnvironment extends Environment{
                 filteredOrgs = filteredOrgs.concat(org)
         }
         if (filteredOrgs.length) {
-            return filteredOrgs[Math.floor(Math.random() * this.scalars.length)]
+            return filteredOrgs[Math.floor(Math.random() * filteredOrgs.length)]
         }
         return null
     }

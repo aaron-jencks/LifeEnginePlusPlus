@@ -31,7 +31,7 @@ class Organism {
             this.inherit(parenta);
         } else if (parentb != null) {
             // sexual reproduction
-            this.mutated = this.crossover(parenta, parentb)
+            this.crossover(parenta, parentb)
         }
     }
 
@@ -73,7 +73,7 @@ class Organism {
             this.brain.copy(parentb.brain)
         }
 
-        return true
+        this.mutated = true
     }
 
     inherit(parent) {
@@ -135,7 +135,7 @@ class Organism {
                 };
             }
             else {
-                this.mutated ||= org.mutate();
+                org.mutated = org.mutated || org.mutate();
             }
         }
 
@@ -152,7 +152,7 @@ class Organism {
             org.r = new_r;
             this.env.addOrganism(org);
             org.updateGrid();
-            if (this.mutated) {
+            if (org.mutated) {
                 FossilRecord.addSpecies(org, this.species);
             }
             else {
@@ -200,6 +200,8 @@ class Organism {
         var result = []
         var remainingCells = [...this.anatomy.cells]
         for (var i = 0; i < count; i++) {
+            if (remainingCells.length == 0)
+                break;
             while (true) {
                 const choiceIndex = Math.floor(Math.random() * remainingCells.length)
                 const choice = remainingCells[choiceIndex]
