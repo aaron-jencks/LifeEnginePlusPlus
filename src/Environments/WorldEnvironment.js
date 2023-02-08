@@ -32,7 +32,7 @@ class WorldEnvironment extends Environment{
         var to_remove = [];
         for (var i in this.organisms) {
             var org = this.organisms[i];
-            if (!org.living || !org.update()) {
+            if (!org.living || !org.update(this)) {
                 to_remove.push(i);
             }
         }
@@ -57,6 +57,21 @@ class WorldEnvironment extends Environment{
 
     renderFull() {
         this.renderer.renderFullGrid(this.grid_map.grid);
+    }
+
+    selectOrganismNearCoord(r, c, radius) {
+        var filteredOrgs = []
+        for (var oi in this.organisms) {
+            var org = this.organisms[oi]
+            if (org.c != c && org.r != r && 
+                org.c > (c - radius) && org.r > (r - radius) && 
+                org.c < (c + radius) && org.r < (r + radius))
+                filteredOrgs = filteredOrgs.concat(org)
+        }
+        if (filteredOrgs.length) {
+            return filteredOrgs[Math.floor(Math.random() * this.scalars.length)]
+        }
+        return null
     }
 
     removeOrganisms(org_indeces) {
