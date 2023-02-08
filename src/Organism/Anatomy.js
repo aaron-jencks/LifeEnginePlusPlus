@@ -6,6 +6,9 @@ class Anatomy {
     constructor(owner) {
         this.owner = owner;
         this.birth_distance = 4;
+        this.bbox = {
+            left: 0, top: 0, right: 0, bottom: 0,
+        }
         this.clear();
     }
 
@@ -25,13 +28,42 @@ class Anatomy {
         return true;
     }
 
+    getRadius() {
+        const cdiff = this.bbox.right - this.bbox.left
+        const rdiff = this.bbox.bottom - this.bbox.top
+        return Math.ceil(((cdiff > rdiff) ? cdiff : rdiff) / 2)
+    }
+
+    updateBbox(r, c) {
+        if (c < this.bbox.left) {
+            this.bbox.left = c
+        }
+        if (c > this.bbox.right) {
+            this.bbox.right = c
+        }
+        if (r < this.bbox.top) {
+            this.bbox.top = r
+        }
+        if (r > this.bbox.bottom) {
+            this.bbox.bottom = r
+        }
+    }
+
+    softRecalcBbox() {
+        for (var i in this.cells) {
+            this.updateBbox(this.cells[i].loc_row, this.cells[i].loc_col)
+        }
+    }
+
     addDefaultCell(state, c, r) {
+        this.updateBbox(r, c)
         var new_cell = BodyCellFactory.createDefault(this.owner, state, c, r);
         this.cells.push(new_cell);
         return new_cell;
     }
 
     addRandomizedCell(state, c, r) {
+        this.updateBbox(r, c)
         if (state==CellStates.eye && !this.has_eyes) {
             this.owner.brain.randomizeDecisions();
         }
@@ -41,6 +73,7 @@ class Anatomy {
     }
 
     addInheritCell(parent_cell) {
+        this.updateBbox(parent_cell.loc_row, parent_cell.loc_col)
         var new_cell = BodyCellFactory.createInherited(this.owner, parent_cell);
         this.cells.push(new_cell);
         return new_cell;
@@ -62,7 +95,20 @@ class Anatomy {
         for (var i=0; i<this.cells.length; i++) {
             var cell = this.cells[i];
             if (cell.loc_col == c && cell.loc_row == r){
-                this.cells.splice(i, 1);
+                var rem = this.cells.splice(i, 1);
+                if (rem.loc_col == this.bbox.left) {
+                    this.bbox.left = 0
+                }
+                if (rem.loc_col == this.bbox.right) {
+                    this.bbox.right = 0
+                }
+                if (rem.loc_row == this.bbox.top) {
+                    this.bbox.top = 0
+                }
+                if (rem.loc_row == this.bbox.bottom) {
+                    this.bbox.bottom = 0
+                }
+                this.softRecalcBbox()
                 break;
             }
         }
