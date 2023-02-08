@@ -29,7 +29,7 @@ class Organism {
         if (parenta != null && parentb == null) {
             // asexual reproduction
             this.inherit(parenta);
-        } else if (parentb != null) {
+        } else if (parenta != null && parentb != null) {
             // sexual reproduction
             this.crossover(parenta, parentb)
         }
@@ -361,6 +361,7 @@ class Organism {
         if (this.canBreed()) {
             var partner = this.env.selectOrganismNearCoord(this.r, this.c, 
                 this.anatomy.getRadius() + Hyperparams.matingRadius)
+            console.log("reproducting with " + partner)
             this.reproduce(partner);
         }
         for (var cell of this.anatomy.cells) {
