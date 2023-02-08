@@ -32,7 +32,7 @@ class WorldEnvironment extends Environment{
         var to_remove = [];
         for (var i in this.organisms) {
             var org = this.organisms[i];
-            if (!org.living || !org.update(this)) {
+            if (!org.living || !org.update()) {
                 to_remove.push(i);
             }
         }
