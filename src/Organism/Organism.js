@@ -187,7 +187,6 @@ class Organism {
             let r = branch.loc_row+growth_direction[1];
             if (this.anatomy.canAddCellAt(c, r)){
                 added = true;
-                console.log(`Added cell to (${r}, ${c}) with type ${state.name}`)
                 this.anatomy.addRandomizedCell(state, c, r);
             }
         }
@@ -213,6 +212,7 @@ class Organism {
     getRandomCells(count, excludeCoords) {
         var result = []
         var remainingCells = [...this.anatomy.cells]
+        var copyExcluded = [...excludeCoords]
         // console.log(`Choosing from ${remainingCells.length} cells`)
         for (var i = 0; i < count; i++) {
             if (remainingCells.length == 0)
@@ -221,9 +221,8 @@ class Organism {
                 const choiceIndex = Math.floor(Math.random() * remainingCells.length)
                 const choice = remainingCells[choiceIndex]
                 var found = false;
-                for (var j in excludeCoords) {
-                    const ec = excludeCoords[j]
-                    if (choice.loc_row == ec.loc_row && choice.loc_col == excludeCoords.loc_col) {
+                for (var ec of copyExcluded) {
+                    if (choice.loc_row == ec.loc_row && choice.loc_col == ec.loc_col) {
                         found = true
                         break;
                     }
@@ -232,7 +231,8 @@ class Organism {
                     // console.log("Found cell in the exclusion list")
                     continue
                 }
-                result = result.concat(choice)
+                result.push(choice)
+                copyExcluded.push(choice)
                 remainingCells.splice(choiceIndex, 1)
                 break;
             }
