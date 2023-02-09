@@ -1,2 +1,4 @@
 node_modules/*
 dist/js/bundle.js
+package-lock.json
+.vscode/launch.json
