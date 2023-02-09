@@ -44,17 +44,25 @@ class Organism {
         const agb = pac > pbc;
         const aeb = pac == pbc;
 
+        // console.log(`Parent A has ${pac} cells`)
+        // console.log(`Parent B has ${pbc} cells`)
+
         if (aeb || !agb) {
-            pac = Math.floor(Math.random() * pac) + 1
+            pac = Math.floor(Math.random() * (!aeb ? pac : Math.ceil(pac / 2))) + 1
             pbc -= pac
         } else if (agb) {
             pbc = Math.floor(Math.random() * pbc) + 1
             pac -= pbc
         }
+
+        // console.log(`Getting ${pac} cells from parent A`)
+        // console.log(`Getting ${pbc} cells from parent B`)
         
-        const pa_cells = this.getRandomCells(pac, [])
-        const pb_cells = this.getRandomCells(pbc, pa_cells)
+        const pa_cells = parenta.getRandomCells(pac, [])
+        const pb_cells = parentb.getRandomCells(pbc, pa_cells)
         const combined_new_cells = pa_cells.concat(pb_cells)
+
+        // console.log(`Created ${combined_new_cells.length} cells for the new organism`)
 
         for (var c of combined_new_cells) {
             this.anatomy.addInheritCell(c)
@@ -135,7 +143,7 @@ class Organism {
                 };
             }
             else {
-                org.mutated = org.mutated || org.mutate();
+                org.mutated = org.mutate() || org.mutated;
             }
         }
 
@@ -148,16 +156,21 @@ class Organism {
         var new_r = this.r + (direction_r*basemovement) + (direction_r*offset);
 
         if (org.isClear(new_c, new_r, org.rotation, true) && org.isStraightPath(new_c, new_r, this.c, this.r, this)){
+            // console.log("the organism was placed")
             org.c = new_c;
             org.r = new_r;
             this.env.addOrganism(org);
             org.updateGrid();
             if (org.mutated) {
+                // console.log("The organism was mutated")
                 FossilRecord.addSpecies(org, this.species);
             }
             else {
+                // console.log("The organism was not mutated")
                 org.species.addPop();
             }
+        } else {
+            // console.log("the organism was not placed")
         }
         Math.max(this.food_collected -= this.foodNeeded(), 0);
     }
@@ -174,6 +187,7 @@ class Organism {
             let r = branch.loc_row+growth_direction[1];
             if (this.anatomy.canAddCellAt(c, r)){
                 added = true;
+                console.log(`Added cell to (${r}, ${c}) with type ${state.name}`)
                 this.anatomy.addRandomizedCell(state, c, r);
             }
         }
@@ -199,10 +213,11 @@ class Organism {
     getRandomCells(count, excludeCoords) {
         var result = []
         var remainingCells = [...this.anatomy.cells]
+        // console.log(`Choosing from ${remainingCells.length} cells`)
         for (var i = 0; i < count; i++) {
             if (remainingCells.length == 0)
                 break;
-            while (true) {
+            for (var dupi = 0; dupi < 5; dupi++) {
                 const choiceIndex = Math.floor(Math.random() * remainingCells.length)
                 const choice = remainingCells[choiceIndex]
                 var found = false;
@@ -214,6 +229,7 @@ class Organism {
                     }
                 }
                 if (found) {
+                    // console.log("Found cell in the exclusion list")
                     continue
                 }
                 result = result.concat(choice)
@@ -238,9 +254,17 @@ class Organism {
                 var real_r = this.r + cell.rotatedRow(this.rotation);
                 this.env.changeCell(real_c, real_r, CellStates.empty, null);
             }
+            this.env.orgMap.get(this.r).set(this.c, null)
+
             this.c = new_c;
             this.r = new_r;
             this.updateGrid();
+
+            if (!this.env.orgMap.has(this.r)) {
+                this.env.orgMap.set(this.r, new Map())
+            }
+            this.env.orgMap.get(this.r).set(this.c, this)
+
             return true;
         }
         return false;
@@ -361,7 +385,7 @@ class Organism {
         if (this.canBreed()) {
             var partner = this.env.selectOrganismNearCoord(this.r, this.c, 
                 this.anatomy.getRadius() + Hyperparams.matingRadius)
-            console.log("reproducting with " + partner)
+            // console.log(`reproducing with ${partner}`)
             this.reproduce(partner);
         }
         for (var cell of this.anatomy.cells) {

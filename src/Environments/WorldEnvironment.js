@@ -19,6 +19,7 @@ class WorldEnvironment extends Environment{
         this.num_cols = Math.ceil(this.renderer.width / cell_size);
         this.grid_map = new GridMap(this.num_cols, this.num_rows, cell_size);
         this.organisms = [];
+        this.orgMap = new Map();
         this.walls = [];
         this.total_mutability = 0;
         this.largest_cell_count = 0;
@@ -60,16 +61,17 @@ class WorldEnvironment extends Environment{
     }
 
     selectOrganismNearCoord(r, c, radius) {
-        var filteredOrgs = []
-        for (var oi in this.organisms) {
-            var org = this.organisms[oi]
-            if (org.c != c && org.r != r && 
-                org.c > (c - radius) && org.r > (r - radius) && 
-                org.c < (c + radius) && org.r < (r + radius))
-                filteredOrgs = filteredOrgs.concat(org)
-        }
-        if (filteredOrgs.length) {
-            return filteredOrgs[Math.floor(Math.random() * filteredOrgs.length)]
+        var oir, oic, org
+        for (var iter = 0; iter < radius*radius; iter++) {
+            oir = Math.floor(Math.random() * (radius << 1)) - radius + r
+            if (oir < 0) oir = 0;
+            if (!this.orgMap.has(oir)) continue;
+            const rowMap = this.orgMap.get(oir)
+            oic = Math.floor(Math.random() * (radius << 1)) - radius + c
+            if (oic < 0) oic = 0;
+            if (!rowMap.has(oic) || rowMap.get(oic) == null) continue;
+            org = rowMap.get(oic)
+            return org;
         }
         return null
     }
@@ -78,7 +80,8 @@ class WorldEnvironment extends Environment{
         let start_pop = this.organisms.length;
         for (var i of org_indeces.reverse()){
             this.total_mutability -= this.organisms[i].mutability;
-            this.organisms.splice(i, 1);
+            const rorg = this.organisms.splice(i, 1)[0];
+            this.orgMap.get(rorg.r).set(rorg.c, null);
         }
         if (this.organisms.length === 0 && start_pop > 0) {
             if (WorldConfig.auto_pause)
@@ -104,6 +107,12 @@ class WorldEnvironment extends Environment{
         organism.updateGrid();
         this.total_mutability += organism.mutability;
         this.organisms.push(organism);
+
+        if (!this.orgMap.has(organism.r)) {
+            this.orgMap.set(organism.r, new Map())
+        }
+        this.orgMap.get(organism.r).set(organism.c, organism)
+
         if (organism.anatomy.cells.length > this.largest_cell_count) 
             this.largest_cell_count = organism.anatomy.cells.length;
     }
